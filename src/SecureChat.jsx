@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { loadOrCreateIdentity } from "./identity";
+import IronManUI from "./IronManUI";
 
 /* ================== */
 /* === UTILITIES ==== */
@@ -81,11 +82,11 @@ async function decrypt(key, pkt) {
 export default function SecureChat() {
   const [myId, setMyId] = useState("");
   const [peerId, setPeerId] = useState("");
-  const [msgs, setMsgs] = useState([]);
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [status, setStatus] = useState("disconnected");
-  const [fp, setFp] = useState("");
-  const [trust, setTrust] = useState("unverified"); // unverified | verified | changed
+  const [fingerprintStr, setFingerprintStr] = useState("");
+  const [trust, setTrust] = useState("unverified");
 
   const peerRef = useRef(null);
   const connRef = useRef(null);
@@ -93,6 +94,24 @@ export default function SecureChat() {
   const sessionRef = useRef({});
   const trustedRef = useRef(loadTrusted());
 
+  /* ===== CLEANUP (CRITICAL) ===== */
+  function cleanupAndReset(reason = "") {
+    console.warn("[SecureChat] reset:", reason);
+
+    try {
+      connRef.current?.close();
+    } catch {}
+
+    connRef.current = null;
+    sessionRef.current = {};
+    setMessages([]);
+    setInput("");
+    setStatus("disconnected");
+    setFingerprintStr("");
+    setTrust("unverified");
+  }
+
+  /* ===== INIT ===== */
   useEffect(() => {
     const s = document.createElement("script");
     s.src = "https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js";
@@ -106,6 +125,7 @@ export default function SecureChat() {
     document.body.appendChild(s);
   }, []);
 
+  /* ===== CONNECTION ===== */
   async function setupConn(conn, initiator) {
     connRef.current = conn;
     setStatus("handshaking");
@@ -115,6 +135,13 @@ export default function SecureChat() {
     sessionRef.current.session = session;
 
     conn.on("data", async (pkt) => {
+      /* ---- DISCONNECT PROPAGATION ---- */
+      if (pkt.type === "disconnect") {
+        cleanupAndReset("Peer disconnected");
+        return;
+      }
+
+      /* ---- HANDSHAKE ---- */
       if (pkt.type === "handshake") {
         const peerIdentityPub = await crypto.subtle.importKey(
           "raw",
@@ -140,8 +167,8 @@ export default function SecureChat() {
         );
 
         if (!valid) {
-          alert("🚨 Identity signature invalid. Disconnecting.");
-          conn.close();
+          alert("🚨 Identity signature invalid");
+          cleanupAndReset("Invalid identity");
           return;
         }
 
@@ -149,31 +176,31 @@ export default function SecureChat() {
           session.privateKey,
           peerSessionPub
         );
-
         sessionRef.current.key = key;
 
         const myFP = await fingerprint(identityRef.current.publicKey);
         const theirFP = await fingerprint(peerIdentityPub);
-        setFp(`${myFP} ↔ ${theirFP}`);
+        setFingerprintStr(`${myFP} ↔ ${theirFP}`);
         setStatus("secure");
 
-        const known = trustedRef.current[peerId];
-        if (!known) {
-          setTrust("unverified");
-        } else if (known === theirFP) {
-          setTrust("verified");
-        } else {
-          setTrust("changed");
-        }
+        const known = trustedRef.current[conn.peer];
+        if (!known) setTrust("unverified");
+        else if (known === theirFP) setTrust("verified");
+        else setTrust("changed");
 
         if (!initiator) sendHandshake(conn);
       }
 
+      /* ---- MESSAGE ---- */
       if (pkt.type === "msg") {
         const text = await decrypt(sessionRef.current.key, pkt);
-        setMsgs((m) => [...m, { from: "them", text }]);
+        setMessages((m) => [...m, { from: "peer", text }]);
       }
     });
+
+    /* ---- HARD CLOSE HANDLING ---- */
+    conn.on("close", () => cleanupAndReset("Connection closed"));
+    conn.on("error", () => cleanupAndReset("Connection error"));
 
     if (initiator) sendHandshake(conn);
   }
@@ -203,68 +230,59 @@ export default function SecureChat() {
     });
   }
 
-  function trustIdentity() {
-    trustedRef.current[peerId] = fp.split(" ↔ ")[1];
-    saveTrusted(trustedRef.current);
-    setTrust("verified");
-  }
-
   function connect() {
+    if (!peerId) return;
+
+    if (peerId === myId) {
+      alert("❌ You cannot connect to your own Secure ID.");
+      return;
+    }
+
     const conn = peerRef.current.connect(peerId);
     conn.on("open", () => setupConn(conn, true));
+    conn.on("error", () =>
+      alert("❌ Failed to connect to peer")
+    );
+  }
+
+  function trustIdentity() {
+    trustedRef.current[peerId] =
+      fingerprintStr.split(" ↔ ")[1];
+    saveTrusted(trustedRef.current);
+    setTrust("verified");
   }
 
   async function send() {
     if (!input || status !== "secure") return;
     const pkt = await encrypt(sessionRef.current.key, input);
     connRef.current.send({ type: "msg", ...pkt });
-    setMsgs((m) => [...m, { from: "me", text: input }]);
+    setMessages((m) => [...m, { from: "me", text: input }]);
     setInput("");
   }
 
+  function disconnect() {
+    try {
+      connRef.current?.send({ type: "disconnect" });
+    } catch {}
+    cleanupAndReset("Local disconnect");
+  }
+
+  /* ===== UI ===== */
   return (
-    <div style={{ padding: 20, fontFamily: "monospace" }}>
-      <h2>PrivateLink 🔐</h2>
-
-      <p><b>Your ID:</b> {myId || "loading…"}</p>
-
-      <input
-        placeholder="Peer ID"
-        value={peerId}
-        onChange={(e) => setPeerId(e.target.value)}
-      />
-      <button onClick={connect}>Connect</button>
-
-      <p>Status: {status}</p>
-      {fp && <p><b>Identity Fingerprint:</b> {fp}</p>}
-
-      {trust === "unverified" && (
-        <button onClick={trustIdentity}>
-          ✅ Trust this identity
-        </button>
-      )}
-
-      {trust === "verified" && <p>🟢 Identity verified</p>}
-      {trust === "changed" && (
-        <p style={{ color: "red" }}>
-          🚨 Identity changed! Possible attack.
-        </p>
-      )}
-
-      <hr />
-
-      {msgs.map((m, i) => (
-        <div key={i}>
-          <b>{m.from}:</b> {m.text}
-        </div>
-      ))}
-
-      <input
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        placeholder="message"
-      />
-      <button onClick={send}>Send</button>
-    </div>
+    <IronManUI
+      myId={myId}
+      peerId={peerId}
+      setPeerId={setPeerId}
+      status={status}
+      trust={trust}
+      fingerprint={fingerprintStr}
+      messages={messages}
+      input={input}
+      setInput={setInput}
+      connect={connect}
+      send={send}
+      trustIdentity={trustIdentity}
+      disconnect={disconnect}
+    />
   );
 }
