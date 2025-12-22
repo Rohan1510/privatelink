@@ -14,6 +14,20 @@ const unb64 = (s) =>
   Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 
 /* ================== */
+/* === TRUST DB ===== */
+/* ================== */
+
+const TRUST_DB = "privatelink-trust";
+
+function loadTrusted() {
+  return JSON.parse(localStorage.getItem(TRUST_DB) || "{}");
+}
+
+function saveTrusted(map) {
+  localStorage.setItem(TRUST_DB, JSON.stringify(map));
+}
+
+/* ================== */
 /* === CRYPTO ======= */
 /* ================== */
 
@@ -71,20 +85,19 @@ export default function SecureChat() {
   const [input, setInput] = useState("");
   const [status, setStatus] = useState("disconnected");
   const [fp, setFp] = useState("");
+  const [trust, setTrust] = useState("unverified"); // unverified | verified | changed
 
   const peerRef = useRef(null);
   const connRef = useRef(null);
-
   const identityRef = useRef(null);
   const sessionRef = useRef({});
+  const trustedRef = useRef(loadTrusted());
 
-  /* === LOAD PEERJS === */
   useEffect(() => {
     const s = document.createElement("script");
     s.src = "https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js";
     s.onload = async () => {
       identityRef.current = await loadOrCreateIdentity();
-
       const peer = new window.Peer();
       peer.on("open", setMyId);
       peer.on("connection", (c) => setupConn(c, false));
@@ -93,10 +106,10 @@ export default function SecureChat() {
     document.body.appendChild(s);
   }, []);
 
-  /* === CONNECTION === */
   async function setupConn(conn, initiator) {
     connRef.current = conn;
     setStatus("handshaking");
+    setTrust("unverified");
 
     const session = await genECDH();
     sessionRef.current.session = session;
@@ -127,7 +140,7 @@ export default function SecureChat() {
         );
 
         if (!valid) {
-          alert("⚠️ Identity verification failed. Disconnecting.");
+          alert("🚨 Identity signature invalid. Disconnecting.");
           conn.close();
           return;
         }
@@ -144,8 +157,16 @@ export default function SecureChat() {
         setFp(`${myFP} ↔ ${theirFP}`);
         setStatus("secure");
 
+        const known = trustedRef.current[peerId];
+        if (!known) {
+          setTrust("unverified");
+        } else if (known === theirFP) {
+          setTrust("verified");
+        } else {
+          setTrust("changed");
+        }
+
         if (!initiator) sendHandshake(conn);
-        return;
       }
 
       if (pkt.type === "msg") {
@@ -182,6 +203,12 @@ export default function SecureChat() {
     });
   }
 
+  function trustIdentity() {
+    trustedRef.current[peerId] = fp.split(" ↔ ")[1];
+    saveTrusted(trustedRef.current);
+    setTrust("verified");
+  }
+
   function connect() {
     const conn = peerRef.current.connect(peerId);
     conn.on("open", () => setupConn(conn, true));
@@ -210,6 +237,19 @@ export default function SecureChat() {
 
       <p>Status: {status}</p>
       {fp && <p><b>Identity Fingerprint:</b> {fp}</p>}
+
+      {trust === "unverified" && (
+        <button onClick={trustIdentity}>
+          ✅ Trust this identity
+        </button>
+      )}
+
+      {trust === "verified" && <p>🟢 Identity verified</p>}
+      {trust === "changed" && (
+        <p style={{ color: "red" }}>
+          🚨 Identity changed! Possible attack.
+        </p>
+      )}
 
       <hr />
 
