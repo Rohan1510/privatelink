@@ -547,36 +547,47 @@ export default function SecureChat() {
         console.error("Identity load error:", err);
       }
 
-      try {
-        const peer = new Peer(PEER_CONFIG);
+      function initPeer(configToUse) {
+        try {
+          const peer = configToUse ? new Peer(configToUse) : new Peer();
 
-        peer.on("open", (id) => {
-          setMyId(id);
-          myIdRef.current = id;
-        });
+          peer.on("open", (id) => {
+            setMyId(id);
+            myIdRef.current = id;
+          });
 
-        peer.on("error", (err) => {
-          console.error("PeerJS network error:", err);
-        });
+          peer.on("error", (err) => {
+            console.error("PeerJS network error:", err);
+            if (!myIdRef.current && configToUse) {
+              console.warn("Retrying PeerJS initialization with default options...");
+              initPeer(undefined);
+            }
+          });
 
-        peer.on("connection", (c) => {
-          if (c.label?.startsWith("file:")) {
-            handleFileConnection(c);
-            return;
+          peer.on("connection", (c) => {
+            if (c.label?.startsWith("file:")) {
+              handleFileConnection(c);
+              return;
+            }
+            if (connRef.current && connRef.current.open && connRef.current.peer !== c.peer) {
+              console.warn("Rejecting concurrent connection from:", c.peer);
+              c.close();
+              return;
+            }
+            setupConn(c, false);
+          });
+
+          peerRef.current = peer;
+          peerInst = peer;
+        } catch (err) {
+          console.error("Peer initialization error:", err);
+          if (!myIdRef.current && configToUse) {
+            initPeer(undefined);
           }
-          if (connRef.current && connRef.current.open && connRef.current.peer !== c.peer) {
-            console.warn("Rejecting concurrent connection from:", c.peer);
-            c.close();
-            return;
-          }
-          setupConn(c, false);
-        });
-
-        peerRef.current = peer;
-        peerInst = peer;
-      } catch (err) {
-        console.error("Peer initialization error:", err);
+        }
       }
+
+      initPeer(PEER_CONFIG);
     })();
 
     return () => {

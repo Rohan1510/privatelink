@@ -14,9 +14,6 @@ if (import.meta.env.PROD && !hasRelayConfiguration) {
 
 export const PEER_CONFIG = {
   debug: 0,
-  host: "0.peerjs.com",
-  port: 443,
-  secure: true,
   config: {
     iceTransportPolicy: hasRelayConfiguration ? "relay" : "all",
     iceServers: hasRelayConfiguration
