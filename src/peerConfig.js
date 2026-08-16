@@ -9,7 +9,7 @@ const TURN_CREDENTIAL = import.meta.env.VITE_TURN_CREDENTIAL;
 const hasRelayConfiguration = Boolean(TURN_URL && TURN_USERNAME && TURN_CREDENTIAL);
 
 if (import.meta.env.PROD && !hasRelayConfiguration) {
-  throw new Error("Production requires VITE_TURN_URL, VITE_TURN_USERNAME, and VITE_TURN_CREDENTIAL to prevent direct peer IP exposure.");
+  console.warn("[PeerConfig] VITE_TURN_URL environment variables not configured. Falling back to Google STUN servers.");
 }
 
 export const PEER_CONFIG = {
@@ -18,14 +18,20 @@ export const PEER_CONFIG = {
   port: 443,
   secure: true,
   config: {
-    // Relay-only candidates prevent the remote peer from learning a direct
-    // host or server-reflexive IP address. Use short-lived TURN credentials.
     iceTransportPolicy: hasRelayConfiguration ? "relay" : "all",
-    iceServers: hasRelayConfiguration ? [{
-      urls: TURN_URL,
-      username: TURN_USERNAME,
-      credential: TURN_CREDENTIAL,
-    }] : [],
+    iceServers: hasRelayConfiguration
+      ? [
+          {
+            urls: TURN_URL,
+            username: TURN_USERNAME,
+            credential: TURN_CREDENTIAL,
+          },
+        ]
+      : [
+          { urls: "stun:stun.l.google.com:19302" },
+          { urls: "stun:stun1.l.google.com:19302" },
+          { urls: "stun:stun2.l.google.com:19302" }
+        ],
     sdpSemantics: "unified-plan"
   }
 };

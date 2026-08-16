@@ -541,29 +541,42 @@ export default function SecureChat() {
   useEffect(() => {
     let peerInst = null;
     (async () => {
-      identityRef.current = await loadOrCreateIdentity();
-      const peer = new Peer(PEER_CONFIG);
+      try {
+        identityRef.current = await loadOrCreateIdentity();
+      } catch (err) {
+        console.error("Identity load error:", err);
+      }
 
-      peer.on("open", (id) => {
-        setMyId(id);
-        myIdRef.current = id;
-      });
+      try {
+        const peer = new Peer(PEER_CONFIG);
 
-      peer.on("connection", (c) => {
-        if (c.label?.startsWith("file:")) {
-          handleFileConnection(c);
-          return;
-        }
-        if (connRef.current && connRef.current.open && connRef.current.peer !== c.peer) {
-          console.warn("Rejecting concurrent connection from:", c.peer);
-          c.close();
-          return;
-        }
-        setupConn(c, false);
-      });
+        peer.on("open", (id) => {
+          setMyId(id);
+          myIdRef.current = id;
+        });
 
-      peerRef.current = peer;
-      peerInst = peer;
+        peer.on("error", (err) => {
+          console.error("PeerJS network error:", err);
+        });
+
+        peer.on("connection", (c) => {
+          if (c.label?.startsWith("file:")) {
+            handleFileConnection(c);
+            return;
+          }
+          if (connRef.current && connRef.current.open && connRef.current.peer !== c.peer) {
+            console.warn("Rejecting concurrent connection from:", c.peer);
+            c.close();
+            return;
+          }
+          setupConn(c, false);
+        });
+
+        peerRef.current = peer;
+        peerInst = peer;
+      } catch (err) {
+        console.error("Peer initialization error:", err);
+      }
     })();
 
     return () => {
@@ -573,7 +586,7 @@ export default function SecureChat() {
         console.warn("Peer destroy error:", err);
       }
     };
-  }, [setupConn]);
+  }, [setupConn, handleFileConnection]);
 
 
 

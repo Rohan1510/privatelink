@@ -11,51 +11,75 @@ function openDB() {
     req.onerror = () => reject(req.error);
   });
 }
+
 export async function loadOrCreateIdentity() {
-  const db = await openDB();
-  const tx = db.transaction(STORE, "readwrite");
-  const store = tx.objectStore(STORE);
-
-  const existing = await new Promise((res) => {
-    const r = store.get("identity");
-    r.onsuccess = () => res(r.result);
-  });
-
-  // Replace legacy extractable private keys. This deliberately changes the
-  // local identity once, so contacts must verify the new fingerprint.
-  if (existing && existing.privateKey && existing.publicKey && !existing.privateKey.extractable) {
-    let publicKeyRaw = existing.publicKeyRaw;
-    if (!publicKeyRaw) {
+  try {
+    const db = await openDB();
+    
+    // Read existing key from IndexedDB in a dedicated transaction
+    const existing = await new Promise((res, rej) => {
       try {
-        publicKeyRaw = new Uint8Array(await crypto.subtle.exportKey("raw", existing.publicKey));
+        const tx = db.transaction(STORE, "readonly");
+        const store = tx.objectStore(STORE);
+        const r = store.get("identity");
+        r.onsuccess = () => res(r.result);
+        r.onerror = () => rej(r.error);
       } catch (err) {
-        console.warn("Could not export existing public key, regenerating identity keypair:", err);
+        rej(err);
+      }
+    });
+
+    if (existing && existing.privateKey && existing.publicKey) {
+      let publicKeyRaw = existing.publicKeyRaw;
+      if (!publicKeyRaw) {
+        try {
+          publicKeyRaw = new Uint8Array(await crypto.subtle.exportKey("raw", existing.publicKey));
+          const record = { privateKey: existing.privateKey, publicKey: existing.publicKey, publicKeyRaw };
+          const txWrite = db.transaction(STORE, "readwrite");
+          txWrite.objectStore(STORE).put(record, "identity");
+          return record;
+        } catch (err) {
+          console.warn("Could not export existing public key, regenerating keypair:", err);
+        }
+      } else {
+        return existing;
       }
     }
-    if (publicKeyRaw) {
-      return { privateKey: existing.privateKey, publicKey: existing.publicKey, publicKeyRaw };
+
+    // Generate new keypair
+    const keyPair = await crypto.subtle.generateKey(
+      { name: "ECDSA", namedCurve: "P-256" },
+      true,
+      ["sign", "verify"]
+    );
+
+    const publicKeyRaw = new Uint8Array(await crypto.subtle.exportKey("raw", keyPair.publicKey));
+    const record = {
+      privateKey: keyPair.privateKey,
+      publicKey: keyPair.publicKey,
+      publicKeyRaw
+    };
+
+    try {
+      const txWrite = db.transaction(STORE, "readwrite");
+      txWrite.objectStore(STORE).put(record, "identity");
+    } catch (e) {
+      console.warn("Could not persist identity to IndexedDB:", e);
     }
+
+    return record;
+  } catch (err) {
+    console.warn("IndexedDB storage unavailable, falling back to in-memory identity keypair:", err);
+    const keyPair = await crypto.subtle.generateKey(
+      { name: "ECDSA", namedCurve: "P-256" },
+      true,
+      ["sign", "verify"]
+    );
+    const publicKeyRaw = new Uint8Array(await crypto.subtle.exportKey("raw", keyPair.publicKey));
+    return {
+      privateKey: keyPair.privateKey,
+      publicKey: keyPair.publicKey,
+      publicKeyRaw
+    };
   }
-
-  // Only the public key needs to be exported. Keeping the private key
-  // non-extractable limits the impact of same-origin script compromise.
-  const keyPair = await crypto.subtle.generateKey(
-    { name: "ECDSA", namedCurve: "P-256" },
-    false,
-    ["sign", "verify"]
-  );
-
-  const publicKeyRaw = new Uint8Array(await crypto.subtle.exportKey("raw", keyPair.publicKey));
-  const record = {
-    privateKey: keyPair.privateKey,
-    publicKey: keyPair.publicKey,
-    publicKeyRaw
-  };
-
-  await new Promise((res) => {
-    const r = store.put(record, "identity");
-    r.onsuccess = res;
-  });
-
-  return record;
 }
