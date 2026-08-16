@@ -116,6 +116,17 @@ npm run dev
 
 Open in two browsers or devices, connect via Peer ID, exchange messages.
 
+For a production build, configure a TURN relay before building:
+
+```bash
+copy .env.example .env.production
+```
+
+Set the three `VITE_TURN_*` values to short-lived credentials from a TURN
+credential service. Production builds intentionally fail without them, so a
+peer cannot learn another peer's direct IP address. Do not place permanent
+TURN credentials in a client build.
+
 ---
 
 ## 📌 Known Limitations (Be Honest)

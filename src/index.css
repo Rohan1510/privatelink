@@ -1,10 +1,205 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Minimal overrides only */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #080a0f;
+  --surface:   #0d1117;
+  --glass:     rgba(255,255,255,0.04);
+  --border:    rgba(255,255,255,0.08);
+  --accent:    #00d4ff;
+  --accent2:   #7b5ef8;
+  --danger:    #ff4757;
+  --success:   #00e676;
+  --warn:      #ffd32a;
+  --text:      #e8eaf0;
+  --muted:     rgba(232,234,240,0.35);
+  --mono:      'Space Mono', monospace;
+  --display:   'Syne', sans-serif;
+}
+
 html, body, #root {
   height: 100%;
   margin: 0;
-  background-color: #000;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 4px; opacity: 0.4; }
+
+/* Animations */
+@keyframes pulse-ring {
+  0%   { transform: scale(1);   opacity: 0.6; }
+  50%  { transform: scale(1.25);opacity: 0; }
+  100% { transform: scale(1);   opacity: 0; }
+}
+@keyframes scan {
+  0%   { background-position: 0 -100%; }
+  100% { background-position: 0 200%; }
+}
+@keyframes fadein {
+  from { opacity:0; transform:translateY(8px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+@keyframes blink {
+  0%,100% { opacity:1; }
+  50%     { opacity:0; }
+}
+
+.fade-in { animation: fadein 0.3s ease both; }
+
+/* Grid noise overlay */
+.noise::after {
+  content:'';
+  position:fixed; inset:0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events:none; z-index:0;
+}
+
+/* Panel */
+.panel {
+  background: var(--glass);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(20px);
+  border-radius: 16px;
+}
+
+/* Input */
+.field {
+  width:100%; padding:14px 18px;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size:13px;
+  outline:none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.field:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(0,212,255,0.12);
+}
+.field::placeholder { color: var(--muted); }
+.field:disabled { opacity:0.4; cursor:not-allowed; }
+
+/* Pill badge */
+.badge {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:5px 12px;
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius:999px;
+  font-size:11px; font-weight:700; letter-spacing:0.08em;
+  text-transform:uppercase;
+}
+
+/* Buttons */
+.btn-primary {
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  padding:14px 28px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border:none; border-radius:10px;
+  color:#000; font-family:var(--mono); font-weight:700;
+  font-size:13px; letter-spacing:0.06em; text-transform:uppercase;
+  cursor:pointer; transition: opacity 0.15s, transform 0.1s, box-shadow 0.2s;
+  box-shadow: 0 0 24px rgba(0,212,255,0.25);
+}
+.btn-primary:hover:not(:disabled) { opacity:0.9; transform:translateY(-1px); box-shadow:0 0 36px rgba(0,212,255,0.4); }
+.btn-primary:active:not(:disabled) { transform:translateY(0); }
+.btn-primary:disabled { opacity:0.3; cursor:not-allowed; box-shadow:none; }
+
+.btn-ghost {
+  display:flex; align-items:center; gap:6px;
+  padding:8px 16px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius:8px;
+  color: var(--muted);
+  font-family:var(--mono); font-size:12px; font-weight:700;
+  letter-spacing:0.06em; text-transform:uppercase;
+  cursor:pointer; transition: border-color 0.15s, color 0.15s;
+}
+.btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+.btn-danger {
+  display:flex; align-items:center; gap:6px;
+  padding:8px 16px;
+  background: rgba(255,71,87,0.1);
+  border: 1px solid rgba(255,71,87,0.3);
+  border-radius:8px;
+  color: var(--danger);
+  font-family:var(--mono); font-size:12px; font-weight:700;
+  letter-spacing:0.06em; text-transform:uppercase;
+  cursor:pointer; transition: background 0.15s, border-color 0.15s;
+}
+.btn-danger:hover { background:rgba(255,71,87,0.2); border-color:var(--danger); }
+
+/* Dot pulse */
+.dot-live {
+  width:8px; height:8px; border-radius:50%;
+  background: var(--success);
+  position:relative;
+}
+.dot-live::before {
+  content:''; position:absolute; inset:-4px;
+  border-radius:50%;
+  border: 2px solid var(--success);
+  animation: pulse-ring 1.6s infinite;
+}
+
+/* Scan line effect */
+.scanline {
+  position:relative; overflow:hidden;
+}
+.scanline::before {
+  content:'';
+  position:absolute; left:0; right:0; height:40%;
+  background: linear-gradient(to bottom, transparent, rgba(0,212,255,0.03), transparent);
+  animation: scan 3s linear infinite;
+  pointer-events:none; z-index:1;
+}
+
+/* Message bubble */
+.bubble-me {
+  max-width:72%; padding:12px 16px;
+  background: linear-gradient(135deg, rgba(0,212,255,0.15), rgba(123,94,248,0.12));
+  border: 1px solid rgba(0,212,255,0.2);
+  border-radius:16px 16px 4px 16px;
+  animation: fadein 0.25s ease both;
+}
+.bubble-peer {
+  max-width:72%; padding:12px 16px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius:16px 16px 16px 4px;
+  animation: fadein 0.25s ease both;
+}
+
+/* Shimmer on loading text */
+.shimmer-text {
+  background: linear-gradient(90deg, var(--muted) 25%, var(--accent) 50%, var(--muted) 75%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 2s infinite;
+}
+
+/* cursor blink */
+.cursor::after {
+  content:'|';
+  animation: blink 1s step-end infinite;
+  color: var(--accent);
 }
