@@ -1,0 +1,9 @@
+# Ralph Execution Progress
+Started at Mon 28 Sep 13:12:16 IST 2026
+----------------------------------------
+- US-001: Stabilize PeerJS session lifecycle in SecureChat
+  - Memoized `startOutboundFileTransfer`, `handleFileConnection`, and `handleInboundEnvelope` with `useCallback` to prevent recreation on renders.
+  - Added `handleInboundEnvelope` to `processInboundRatchetPacket` dependencies.
+  - Stabilized `setupConn` and `handleFileConnection` so the initialization `useEffect` runs once on mount and does not call `peerInst.destroy()` on input updates.
+  - Added guard check for `connRef.current` and `connRef.current.peer` before calling `peerRef.current.connect` in `startOutboundFileTransfer`.
+  - Verified tests pass (`npm test`) and lint checks pass (`npm run lint`).

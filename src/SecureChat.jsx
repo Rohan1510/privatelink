@@ -218,9 +218,9 @@ export default function SecureChat() {
     setRatchetEpoch(sessionRef.current.ratchet.ratchetCount);
   }
 
-  async function startOutboundFileTransfer(transferId) {
+  const startOutboundFileTransfer = useCallback(async (transferId) => {
     const transfer = outgoingFilesRef.current.get(transferId);
-    if (!transfer || transfer.started || !peerRef.current) return;
+    if (!transfer || transfer.started || !peerRef.current || !connRef.current || !connRef.current.peer) return;
     transfer.started = true;
     updateTransfer(transferId, { status: "connecting" });
 
@@ -253,9 +253,9 @@ export default function SecureChat() {
         updateTransfer(transferId, { status: "failed", error: "Transfer interrupted" });
       }
     });
-  }
+  }, [updateTransfer]);
 
-  async function handleFileConnection(fileConn) {
+  const handleFileConnection = useCallback(async (fileConn) => {
     const transferId = fileConn.label.slice("file:".length);
     const transfer = incomingFilesRef.current.get(transferId);
     if (!transfer) {
@@ -305,9 +305,9 @@ export default function SecureChat() {
         updateTransfer(transferId, { status: "failed", error: "Integrity check failed" });
       });
     });
-  }
+  }, [updateTransfer]);
 
-  async function handleInboundEnvelope(envelope) {
+  const handleInboundEnvelope = useCallback(async (envelope) => {
     if (envelope?.kind === "chat" && typeof envelope.text === "string" && envelope.text.length <= MAX_MESSAGE_LENGTH) {
       setMessages((m) => [...m, { from: "peer", text: envelope.text }]);
       return;
@@ -345,7 +345,7 @@ export default function SecureChat() {
     if (envelope?.kind === "file_accept" && typeof envelope.transferId === "string") {
       await startOutboundFileTransfer(envelope.transferId);
     }
-  }
+  }, [startOutboundFileTransfer]);
 
   const processInboundRatchetPacket = useCallback(async (pkt) => {
     try {
@@ -366,7 +366,7 @@ export default function SecureChat() {
         cleanupAndReset(connRef.current, "Too many decryption failures");
       }
     }
-  }, [cleanupAndReset]);
+  }, [cleanupAndReset, handleInboundEnvelope]);
 
   /* ===== CONNECTION & HANDSHAKE MANAGEMENT ===== */
   const setupConn = useCallback(async (conn, initiator) => {

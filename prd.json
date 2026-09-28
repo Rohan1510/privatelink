@@ -1,0 +1,51 @@
+{
+  "project": "PrivateLink",
+  "branchName": "ralph/fix-peerjs-stability-and-tests",
+  "description": "Stability and Reliability Fixes - Prevent PeerJS session recreation on keystrokes, support Uint8Array binary chunks, and add file transfer unit tests",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Stabilize PeerJS session lifecycle in SecureChat",
+      "description": "As a user, I want chat and file transfers to remain connected while typing or receiving updates, so that my connection does not abruptly terminate.",
+      "acceptanceCriteria": [
+        "Stabilize handleFileConnection and setupConn in src/SecureChat.jsx so they do not recreate and trigger useEffect cleanup on every render",
+        "Ensure Peer initialization runs once on mount and does not call peerInst.destroy() on input state updates",
+        "Add guard check for connRef.current before accessing connRef.current.peer in startOutboundFileTransfer",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Support Uint8Array and ArrayBufferView for incoming file chunks",
+      "description": "As a user, I want incoming file chunks deserialized as Uint8Array or ArrayBuffer to be accepted, so that file transfers do not fail with chunk validation errors.",
+      "acceptanceCriteria": [
+        "Update chunk type validation in src/SecureChat.jsx to accept both ArrayBuffer and ArrayBufferView (Uint8Array) for packet.iv and packet.ciphertext",
+        "Ensure buffer slicing or normalization passes valid BufferSource to decryptFileChunk",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Add automated unit tests for fileTransfer.js",
+      "description": "As a developer, I want comprehensive test coverage for fileTransfer.js, so that chunk encryption, decryption, AAD formatting, and transfer ID generation are verified in CI.",
+      "acceptanceCriteria": [
+        "Create src/fileTransfer.test.js with test suites for encryptFileChunk, decryptFileChunk, fileAAD, and makeTransferId",
+        "Verify round-trip chunk encryption and decryption with authentic and tampered AAD",
+        "All tests pass via npm test (node --test src/*.test.js)",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}
