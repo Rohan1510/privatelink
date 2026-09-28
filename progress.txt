@@ -13,3 +13,10 @@ Started at Mon 28 Sep 13:12:16 IST 2026
   - Updated `file_chunk` packet validation in `handleFileConnection` to accept `ArrayBuffer` and `ArrayBufferView` for `packet.iv` and `packet.ciphertext`.
   - Normalized `packet.iv` and `packet.ciphertext` before passing to `decryptFileChunk`.
   - Verified tests pass (`npm test`), linting passes (`npm run lint`), and build passes (`npm run build`).
+- US-003: Add automated unit tests for fileTransfer.js
+  - Created `src/fileTransfer.test.js` with test suites for `makeTransferId`, `fileAAD`, `encryptFileChunk`, `decryptFileChunk`, and `bytesToB64`/`b64ToBytes`.
+  - Verified round-trip chunk encryption and decryption for authentic AAD and full 16KB chunk sizes.
+  - Verified decryption failure and authentication rejection when AAD is tampered (modified index, modified transfer ID, or bit corruption), ciphertext is tampered, or wrong key is supplied.
+  - Verified support for `Uint8Array` view buffers for IV and ciphertext inputs.
+  - Verified tests pass via `npm test`, lint passes (`npm run lint`), and build passes (`npm run build`).
+
