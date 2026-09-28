@@ -54,6 +54,16 @@ function isValidBase64String(str, minLen = 1, maxLen = 8192) {
   }
 }
 
+const isBufferSource = (val) => Boolean(val && (val instanceof ArrayBuffer || ArrayBuffer.isView(val)));
+
+function normalizeBufferSource(val) {
+  if (val instanceof ArrayBuffer) return val;
+  if (ArrayBuffer.isView(val)) {
+    return new Uint8Array(val.buffer, val.byteOffset, val.byteLength);
+  }
+  return val;
+}
+
 async function fingerprint(pubKeyRaw) {
   const hash = await crypto.subtle.digest("SHA-256", pubKeyRaw);
   const hashArray = Array.from(new Uint8Array(hash));
@@ -280,10 +290,19 @@ export default function SecureChat() {
           return;
         }
         if (packet.type === "file_chunk") {
-          if (packet.index !== transfer.nextIndex || !(packet.iv instanceof ArrayBuffer) || !(packet.ciphertext instanceof ArrayBuffer)) {
+          if (
+            packet.index !== transfer.nextIndex ||
+            !isBufferSource(packet.iv) ||
+            !isBufferSource(packet.ciphertext)
+          ) {
             throw new Error("Invalid file chunk");
           }
-          const plaintext = await decryptFileChunk(transfer.key, packet.iv, packet.ciphertext, fileAAD(transferId, packet.index, transfer.totalChunks));
+          const plaintext = await decryptFileChunk(
+            transfer.key,
+            normalizeBufferSource(packet.iv),
+            normalizeBufferSource(packet.ciphertext),
+            fileAAD(transferId, packet.index, transfer.totalChunks)
+          );
           if (transfer.receivedBytes + plaintext.byteLength > transfer.size) throw new Error("File size limit exceeded");
           await transfer.writable.write(plaintext);
           transfer.nextIndex++;
