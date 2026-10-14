@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Planning & Ralph loop
+.planning/
+prd.json
+progress.txt
+ralph.sh
+ralph/

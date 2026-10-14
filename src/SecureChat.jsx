@@ -629,9 +629,17 @@ export default function SecureChat() {
       return;
     }
 
+    setStatus("connecting");
+    statusRef.current = "connecting";
+
     const conn = peerRef.current.connect(peerId);
     conn.on("open", () => setupConn(conn, true));
-    conn.on("error", () => alert("❌ Failed to connect to peer"));
+    conn.on("error", (err) => {
+      console.error("Peer connect error:", err);
+      setStatus("disconnected");
+      statusRef.current = "disconnected";
+      alert("❌ Failed to connect to peer");
+    });
   }
 
   /* ===== EXPLICIT TRUST CONFIRMATION ===== */
