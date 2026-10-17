@@ -16,6 +16,16 @@ import {
   waitForWritableBuffer,
 } from "./fileTransfer";
 import IronManUI from "./IronManUI";
+import {
+  getDeterministicPeerId,
+  getFriends,
+  saveFriend,
+  removeFriend,
+  findFriendByPeerId,
+  findFriendByFingerprint,
+  generateInvitePayload,
+  parseInvitePayload,
+} from "./friendsStore";
 
 /* ========================================================================= */
 /* === UTILITIES & SECURITY LIMITS ========================================= */
@@ -99,6 +109,9 @@ export default function SecureChat({ user, onSignOut } = {}) {
   const [fingerprintStr, setFingerprintStr] = useState("");
   const [trust, setTrust] = useState("unverified");
   const [ratchetEpoch, setRatchetEpoch] = useState(0);
+  const [friends, setFriends] = useState(() => getFriends(user?.userId));
+  const [rawMyFingerprint, setRawMyFingerprint] = useState("");
+  const [inboundInvite, setInboundInvite] = useState(null);
 
   const myIdRef = useRef("");
   const peerRef = useRef(null);
@@ -559,8 +572,35 @@ export default function SecureChat({ user, onSignOut } = {}) {
         sessionRef.current.peerFingerprint = theirFP;
         setFingerprintStr(`${myFP} ↔ ${theirFP}`);
 
+        const matchedFriend =
+          findFriendByPeerId(user?.userId, conn.peer) ||
+          findFriendByFingerprint(user?.userId, theirFP);
+
         const known = trustedRef.current[conn.peer];
-        if (!known) {
+
+        if (matchedFriend && matchedFriend.fingerprint === theirFP) {
+          // Pinned friend match! Auto-trust verified friend
+          trustedRef.current[conn.peer] = theirFP;
+          saveTrustedStore(trustedRef.current);
+          setTrust("verified");
+          setStatus("secure");
+          trustRef.current = "verified";
+          statusRef.current = "secure";
+
+          // Immediately process any queued inbound packets
+          const queued = [...queuedPacketsRef.current];
+          queuedPacketsRef.current = [];
+          for (const p of queued) {
+            await processInboundRatchetPacket(p);
+          }
+        } else if (matchedFriend && matchedFriend.fingerprint !== theirFP) {
+          // MITM / Impersonation alert: Fingerprint mismatch for pinned friend!
+          console.warn("[SecureChat] Fingerprint mismatch for pinned friend:", matchedFriend);
+          setTrust("changed");
+          setStatus("verification_required");
+          trustRef.current = "changed";
+          statusRef.current = "verification_required";
+        } else if (!known) {
           setTrust("unverified");
           setStatus("verification_required");
           trustRef.current = "unverified";
@@ -604,17 +644,38 @@ export default function SecureChat({ user, onSignOut } = {}) {
 
   /* ===== INITIALIZATION ===== */
   useEffect(() => {
+    setFriends(getFriends(user?.userId));
+  }, [user?.userId]);
+
+  // Check for deep-link invite in URL hash
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hash = window.location.hash;
+    if (hash && hash.includes("invite=")) {
+      const parsed = parseInvitePayload(hash);
+      if (parsed) {
+        setInboundInvite(parsed);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
     let peerInst = null;
     (async () => {
       try {
         identityRef.current = await loadOrCreateIdentity();
+        const myFP = await fingerprint(identityRef.current.publicKeyRaw);
+        setRawMyFingerprint(myFP);
       } catch (err) {
         console.error("Identity load error:", err);
       }
 
       function initPeer(configToUse) {
         try {
-          const peer = configToUse ? new Peer(configToUse) : new Peer();
+          const deterministicId = getDeterministicPeerId(user?.userId);
+          const peer = deterministicId
+            ? (configToUse ? new Peer(deterministicId, configToUse) : new Peer(deterministicId))
+            : (configToUse ? new Peer(configToUse) : new Peer());
 
           peer.on("open", (id) => {
             setMyId(id);
@@ -623,7 +684,9 @@ export default function SecureChat({ user, onSignOut } = {}) {
 
           peer.on("error", (err) => {
             console.error("PeerJS network error:", err);
-            if (!myIdRef.current && configToUse) {
+            if (err?.type === "unavailable-id") {
+              console.warn("Deterministic Peer ID already taken in another active session/tab.");
+            } else if (!myIdRef.current && configToUse) {
               console.warn("Retrying PeerJS initialization with default options...");
               initPeer(undefined);
             }
@@ -659,10 +722,10 @@ export default function SecureChat({ user, onSignOut } = {}) {
       try {
         peerInst?.destroy();
       } catch (err) {
-        console.warn("Peer destroy error:", err);
+        console.warn("Peer cleanup error:", err);
       }
     };
-  }, [setupConn, handleFileConnection]);
+  }, [user?.userId, setupConn, handleFileConnection]);
 
 
 
@@ -812,6 +875,40 @@ export default function SecureChat({ user, onSignOut } = {}) {
     cleanupAndReset(connRef.current, "Local user disconnect");
   }
 
+  /* ===== ALLIES & INVITES HANDLERS ===== */
+  const handleAddFriend = useCallback((friendData) => {
+    const saved = saveFriend(user?.userId, friendData);
+    if (saved) {
+      setFriends(getFriends(user?.userId));
+      return saved;
+    }
+    return null;
+  }, [user?.userId]);
+
+  const handleRemoveFriend = useCallback((friendId) => {
+    const updated = removeFriend(user?.userId, friendId);
+    setFriends(updated);
+  }, [user?.userId]);
+
+  const handleAcceptInvite = useCallback((inviteFriend) => {
+    handleAddFriend(inviteFriend);
+    setInboundInvite(null);
+    if (typeof window !== "undefined" && window.location.hash.includes("invite=")) {
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+  }, [handleAddFriend]);
+
+  const handleDismissInvite = useCallback(() => {
+    setInboundInvite(null);
+    if (typeof window !== "undefined" && window.location.hash.includes("invite=")) {
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+  }, []);
+
+  const myInvite = (user && rawMyFingerprint)
+    ? generateInvitePayload(user, rawMyFingerprint)
+    : null;
+
   /* ===== RENDER UI ===== */
   return (
     <IronManUI
@@ -835,6 +932,13 @@ export default function SecureChat({ user, onSignOut } = {}) {
       cancelFile={cancelFile}
       user={user}
       onSignOut={onSignOut}
+      friends={friends}
+      onAddFriend={handleAddFriend}
+      onRemoveFriend={handleRemoveFriend}
+      myInvite={myInvite}
+      inboundInvite={inboundInvite}
+      onAcceptInvite={handleAcceptInvite}
+      onDismissInvite={handleDismissInvite}
     />
   );
 }

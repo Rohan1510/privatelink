@@ -944,3 +944,347 @@ html, body, #root {
   color: #ff4757;
 }
 
+/* ========================================================================= */
+/* === PERMANENT ALLIES & DEEP-LINK INVITE STYLES ========================== */
+/* ========================================================================= */
+
+.inbound-invite-banner {
+  background: rgba(0, 212, 255, 0.08);
+  border: 1px solid rgba(0, 212, 255, 0.4);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 0 20px rgba(0, 212, 255, 0.15);
+}
+
+.inbound-invite-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.inbound-invite-title {
+  font-family: var(--display);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: var(--accent);
+}
+
+.inbound-invite-text {
+  font-size: 12px;
+  color: var(--text);
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.inbound-invite-fp {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.inbound-invite-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* Connect Screen Tab Switcher */
+.connect-tabs-row {
+  display: flex;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  margin-bottom: 24px;
+}
+
+.connect-tab-btn {
+  flex: 1;
+  padding: 10px 16px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--muted);
+  font-family: var(--display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.connect-tab-btn:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.connect-tab-active {
+  background: rgba(0, 212, 255, 0.12) !important;
+  color: var(--accent) !important;
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  box-shadow: 0 0 12px rgba(0, 212, 255, 0.15);
+}
+
+.badge-pill {
+  background: rgba(0, 212, 255, 0.2);
+  color: var(--accent);
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-family: var(--mono);
+}
+
+/* My Permanent Ally Card */
+.my-ally-card {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.my-ally-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.my-ally-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: var(--success);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.invite-actions-row {
+  display: flex;
+  gap: 10px;
+}
+
+.invite-share-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* Inline Add Ally Drawer */
+.add-ally-panel {
+  background: rgba(0, 212, 255, 0.04);
+  border: 1px dashed rgba(0, 212, 255, 0.3);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.add-ally-row {
+  display: flex;
+  gap: 10px;
+}
+
+.add-ally-input {
+  flex: 1;
+  font-size: 11px;
+}
+
+/* Allies List */
+.allies-list-container {
+  margin-top: 10px;
+}
+
+.allies-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.allies-count {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--muted);
+}
+
+.allies-empty-state {
+  padding: 32px 20px;
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.allies-empty-icon {
+  margin: 0 auto 12px auto;
+  opacity: 0.3;
+}
+
+.allies-empty-title {
+  font-family: var(--display);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.allies-empty-desc {
+  font-size: 11px;
+  color: rgba(232, 234, 240, 0.5);
+  line-height: 1.6;
+  max-width: 360px;
+  margin: 0 auto;
+}
+
+.allies-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.ally-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  transition: all 0.2s ease;
+}
+
+.ally-item:hover {
+  background: rgba(0, 212, 255, 0.04);
+  border-color: rgba(0, 212, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+.ally-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(123, 94, 248, 0.2));
+  border: 1px solid rgba(0, 212, 255, 0.4);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--display);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+.ally-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.ally-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.ally-name {
+  font-family: var(--display);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ally-pinned-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 8px;
+  padding: 1px 5px;
+  background: rgba(0, 230, 118, 0.15);
+  border: 1px solid rgba(0, 230, 118, 0.3);
+  color: var(--success);
+  border-radius: 4px;
+  letter-spacing: 0.1em;
+}
+
+.ally-email {
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ally-fp {
+  font-size: 9px;
+  font-family: var(--mono);
+  color: rgba(0, 212, 255, 0.6);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 3px;
+}
+
+.ally-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ally-connect-btn {
+  padding: 6px 12px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  gap: 5px;
+}
+
+.btn-icon-danger {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-icon-danger:hover {
+  background: rgba(255, 71, 87, 0.15);
+  border-color: rgba(255, 71, 87, 0.3);
+  color: var(--danger);
+}
+
+.ally-header-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+}
+

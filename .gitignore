@@ -26,9 +26,12 @@ dist-ssr
 *.sln
 *.sw?
 
-# Planning & Ralph loop
+# Skills, agent customizations, and planning artifacts
+.agents/
+.gemini/
 .planning/
 prd.json
 progress.txt
 ralph.sh
 ralph/
+
