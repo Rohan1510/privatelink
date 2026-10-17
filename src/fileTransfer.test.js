@@ -7,7 +7,9 @@ import {
   decryptFileChunk,
   bytesToB64,
   b64ToBytes,
-  FILE_CHUNK_SIZE
+  FILE_CHUNK_SIZE,
+  waitForWritableBuffer,
+  FILE_BUFFER_HIGH_WATER
 } from "./fileTransfer.js";
 
 describe("makeTransferId", () => {
@@ -210,3 +212,100 @@ describe("bytesToB64 and b64ToBytes", () => {
     assert.deepEqual(restored, sampleBytes);
   });
 });
+
+describe("waitForWritableBuffer", () => {
+  it("resolves immediately if dataChannel is null or bufferedAmount <= HIGH_WATER", async () => {
+    await assert.doesNotReject(async () => {
+      await waitForWritableBuffer(null);
+      await waitForWritableBuffer(undefined);
+      await waitForWritableBuffer({ bufferedAmount: 0 });
+      await waitForWritableBuffer({ bufferedAmount: FILE_BUFFER_HIGH_WATER });
+    });
+  });
+
+  it("waits for bufferedamountlow event when buffer exceeds high water", async () => {
+    class MockDataChannel extends EventTarget {
+      constructor() {
+        super();
+        this.bufferedAmount = FILE_BUFFER_HIGH_WATER + 1000;
+        this.bufferedAmountLowThreshold = 0;
+      }
+    }
+
+    const mock = new MockDataChannel();
+    let resolved = false;
+
+    const waitPromise = waitForWritableBuffer(mock).then(() => {
+      resolved = true;
+    });
+
+    assert.equal(resolved, false);
+    assert.equal(mock.bufferedAmountLowThreshold, 256 * 1024);
+
+    mock.bufferedAmount = 100;
+    mock.dispatchEvent(new Event("bufferedamountlow"));
+
+    await waitPromise;
+    assert.equal(resolved, true);
+  });
+
+  it("rejects if dataChannel fires close or error while waiting", async () => {
+    class MockDataChannel extends EventTarget {
+      constructor() {
+        super();
+        this.bufferedAmount = FILE_BUFFER_HIGH_WATER + 1000;
+      }
+    }
+
+    const mock = new MockDataChannel();
+    const waitPromise = waitForWritableBuffer(mock);
+
+    mock.dispatchEvent(new Event("close"));
+
+    await assert.rejects(
+      async () => await waitPromise,
+      (err) => err.message === "File connection closed"
+    );
+  });
+});
+
+describe("in-memory multi-chunk transfer and blob reconstruction", () => {
+  it("streams and reconstructs binary file across multiple chunks", async () => {
+    const keyBytes = crypto.getRandomValues(new Uint8Array(32));
+    const transferId = makeTransferId();
+
+    // 40 KB file across 3 chunks (16KB, 16KB, 8KB)
+    const originalFileBytes = crypto.getRandomValues(new Uint8Array(40 * 1024));
+    const totalChunks = Math.ceil(originalFileBytes.byteLength / FILE_CHUNK_SIZE);
+    assert.equal(totalChunks, 3);
+
+    // Sender encrypts chunks
+    const encryptedPackets = [];
+    for (let index = 0; index < totalChunks; index++) {
+      const start = index * FILE_CHUNK_SIZE;
+      const end = Math.min(start + FILE_CHUNK_SIZE, originalFileBytes.byteLength);
+      const plaintext = originalFileBytes.subarray(start, end);
+      const aad = fileAAD(transferId, index, totalChunks);
+      const { iv, ciphertext } = await encryptFileChunk(keyBytes, plaintext, aad);
+      encryptedPackets.push({ index, iv, ciphertext });
+    }
+
+    // Receiver decrypts and collects into in-memory chunks
+    const receivedChunks = [];
+    let receivedBytes = 0;
+    for (const packet of encryptedPackets) {
+      const aad = fileAAD(transferId, packet.index, totalChunks);
+      const plaintext = await decryptFileChunk(keyBytes, packet.iv, packet.ciphertext, aad);
+      receivedChunks.push(plaintext);
+      receivedBytes += plaintext.byteLength;
+    }
+
+    assert.equal(receivedBytes, originalFileBytes.byteLength);
+
+    // Reconstruct via Blob
+    const blob = new Blob(receivedChunks, { type: "application/octet-stream" });
+    const reconstructedBuffer = await blob.arrayBuffer();
+    assert.deepEqual(new Uint8Array(reconstructedBuffer), originalFileBytes);
+  });
+});
+

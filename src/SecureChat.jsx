@@ -90,7 +90,7 @@ function handshakePayload(pkt) {
 /* === MAIN COMPONENT ====================================================== */
 /* ========================================================================= */
 
-export default function SecureChat() {
+export default function SecureChat({ user, onSignOut } = {}) {
   const [myId, setMyId] = useState("");
   const [peerId, setPeerId] = useState("");
   const [messages, setMessages] = useState([]);
@@ -163,7 +163,10 @@ export default function SecureChat() {
     for (const fileConn of fileConnectionsRef.current.values()) fileConn.close();
     fileConnectionsRef.current.clear();
     outgoingFilesRef.current.clear();
-    incomingFilesRef.current.forEach((transfer) => transfer.writable?.abort?.());
+    incomingFilesRef.current.forEach((transfer) => {
+      transfer.writable?.abort?.();
+      if (transfer.chunks) transfer.chunks = [];
+    });
     incomingFilesRef.current.clear();
     setFileTransfers([]);
 
@@ -240,9 +243,29 @@ export default function SecureChat() {
       serialization: "binary",
     });
     fileConnectionsRef.current.set(transferId, fileConn);
-    fileConn.on("error", () => updateTransfer(transferId, { status: "failed", error: "File connection failed" }));
-    fileConn.on("close", () => fileConnectionsRef.current.delete(transferId));
+
+    const connectTimeout = setTimeout(() => {
+      if (fileConn && !fileConn.open) {
+        console.warn("File connection timed out for transfer:", transferId);
+        fileConn.close();
+        fileConnectionsRef.current.delete(transferId);
+        updateTransfer(transferId, { status: "failed", error: "Connection timed out" });
+      }
+    }, 30000);
+
+    fileConn.on("error", (err) => {
+      clearTimeout(connectTimeout);
+      console.error("File connection error:", err);
+      updateTransfer(transferId, { status: "failed", error: "File connection failed" });
+    });
+
+    fileConn.on("close", () => {
+      clearTimeout(connectTimeout);
+      fileConnectionsRef.current.delete(transferId);
+    });
+
     fileConn.on("open", async () => {
+      clearTimeout(connectTimeout);
       try {
         fileConn.send({ type: "file_auth", transferId, token: transfer.token });
         fileConn.send({ type: "file_start", transferId, totalChunks: transfer.totalChunks, size: transfer.file.size });
@@ -304,7 +327,14 @@ export default function SecureChat() {
             fileAAD(transferId, packet.index, transfer.totalChunks)
           );
           if (transfer.receivedBytes + plaintext.byteLength > transfer.size) throw new Error("File size limit exceeded");
-          await transfer.writable.write(plaintext);
+          
+          if (transfer.writable) {
+            await transfer.writable.write(plaintext);
+          } else {
+            if (!transfer.chunks) transfer.chunks = [];
+            transfer.chunks.push(plaintext);
+          }
+
           transfer.nextIndex++;
           transfer.receivedBytes += plaintext.byteLength;
           updateTransfer(transferId, { progress: Math.round((transfer.nextIndex / transfer.totalChunks) * 100) });
@@ -312,13 +342,29 @@ export default function SecureChat() {
         }
         if (packet.type === "file_end") {
           if (transfer.nextIndex !== transfer.totalChunks || transfer.receivedBytes !== transfer.size) throw new Error("Incomplete file transfer");
-          await transfer.writable.close();
+          
+          let downloadUrl = null;
+          if (transfer.writable) {
+            await transfer.writable.close();
+          } else if (transfer.chunks) {
+            const blob = new Blob(transfer.chunks, { type: transfer.type || "application/octet-stream" });
+            downloadUrl = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = downloadUrl;
+            a.download = transfer.name || "download";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            transfer.chunks = [];
+          }
+
           incomingFilesRef.current.delete(transferId);
-          updateTransfer(transferId, { status: "received", progress: 100 });
+          updateTransfer(transferId, { status: "received", progress: 100, downloadUrl });
         }
       }).catch(async (err) => {
         console.error("Rejected file packet:", err);
-        await transfer.writable.abort?.();
+        await transfer.writable?.abort?.();
+        if (transfer.chunks) transfer.chunks = [];
         incomingFilesRef.current.delete(transferId);
         fileConn.close();
         updateTransfer(transferId, { status: "failed", error: "Integrity check failed" });
@@ -690,20 +736,41 @@ export default function SecureChat() {
 
   async function acceptFile(transferId) {
     const transfer = incomingFilesRef.current.get(transferId);
-    if (!transfer || typeof window.showSaveFilePicker !== "function") {
-      alert("This browser cannot stream large files to disk. Use a Chromium-based browser to receive files up to 250 MB.");
-      return;
+    if (!transfer) return;
+
+    if (typeof window.showSaveFilePicker === "function") {
+      try {
+        const ext = transfer.name?.includes(".") ? transfer.name.split(".").pop() : "bin";
+        const mimeType = transfer.type && transfer.type.includes("/") ? transfer.type : "application/octet-stream";
+        const handle = await window.showSaveFilePicker({
+          suggestedName: (transfer.name || "download").replace(/[\\/:*?"<>|]/g, "_"),
+          types: [{
+            description: "Transferred file",
+            accept: { [mimeType]: [`.${ext}`] }
+          }],
+        });
+        transfer.writable = await handle.createWritable();
+      } catch (err) {
+        if (err?.name === "AbortError") {
+          // User deliberately cancelled the file picker dialog
+          return;
+        }
+        console.warn("showSaveFilePicker error, falling back to in-memory download:", err);
+        transfer.writable = null;
+        transfer.chunks = [];
+      }
+    } else {
+      // Browser does not support showSaveFilePicker (Firefox, Safari, mobile, HTTP)
+      transfer.writable = null;
+      transfer.chunks = [];
     }
+
+    updateTransfer(transferId, { status: "accepted" });
     try {
-      const handle = await window.showSaveFilePicker({
-        suggestedName: transfer.name.replace(/[\\/:*?"<>|]/g, "_"),
-        types: [{ description: "Transferred file", accept: { [transfer.type || "application/octet-stream"]: ["." + (transfer.name.split(".").pop() || "bin")] } }],
-      });
-      transfer.writable = await handle.createWritable();
-      updateTransfer(transferId, { status: "accepted" });
       await sendSecureEnvelope({ kind: "file_accept", transferId });
     } catch (err) {
-      if (err?.name !== "AbortError") updateTransfer(transferId, { status: "failed", error: "Could not open destination" });
+      console.error("Failed to send file acceptance:", err);
+      updateTransfer(transferId, { status: "failed", error: "Could not send acceptance" });
     }
   }
 
@@ -713,6 +780,7 @@ export default function SecureChat() {
     outgoingFilesRef.current.delete(transferId);
     const incoming = incomingFilesRef.current.get(transferId);
     await incoming?.writable?.abort?.();
+    if (incoming?.chunks) incoming.chunks = [];
     incomingFilesRef.current.delete(transferId);
     updateTransfer(transferId, { status: "cancelled" });
   }
@@ -765,6 +833,8 @@ export default function SecureChat() {
       fileTransfers={fileTransfers}
       acceptFile={acceptFile}
       cancelFile={cancelFile}
+      user={user}
+      onSignOut={onSignOut}
     />
   );
 }

@@ -11,7 +11,8 @@ import {
   AlertTriangle,
   CheckCheck,
   Fingerprint,
-  ChevronRight
+  ChevronRight,
+  LogOut
 } from "lucide-react";
 
 /* ─────────────────────────────────────────────
@@ -59,7 +60,7 @@ function HexLogo({ size = 80 }) {
 /* ─────────────────────────────────────────────
    CONNECTION SCREEN
 ───────────────────────────────────────────── */
-function ConnectScreen({ myId, peerId, setPeerId, connect, isSelfConnect, status }) {
+function ConnectScreen({ myId, peerId, setPeerId, connect, isSelfConnect, status, user, onSignOut }) {
   const [copied, setCopied] = useState(false);
 
   const copy = () => {
@@ -83,6 +84,18 @@ function ConnectScreen({ myId, peerId, setPeerId, connect, isSelfConnect, status
           <p className="brand-subtitle">
             End-to-End · Double Ratchet (PFS) · ECDH P-256
           </p>
+          {user && (
+            <div className="auth-status-pill">
+              <span className="auth-user-email">
+                {user?.signInDetails?.loginId || user?.username || "Authenticated"}
+              </span>
+              {onSignOut && (
+                <button onClick={onSignOut} className="btn-ghost btn-signout" title="Sign out of AWS Cognito">
+                  <LogOut size={12} /> Sign Out
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="panel scanline connect-panel">
@@ -168,6 +181,8 @@ function ChatScreen({
   fileTransfers,
   acceptFile,
   cancelFile,
+  user,
+  onSignOut,
 }) {
   const endRef = useRef(null);
 
@@ -216,6 +231,11 @@ function ChatScreen({
           <button className="btn-danger" onClick={disconnect}>
             <Power size={13} /> Disconnect
           </button>
+          {onSignOut && (
+            <button className="btn-ghost btn-sm" onClick={onSignOut} title="Sign Out of AWS Cognito">
+              <LogOut size={13} /> Sign Out
+            </button>
+          )}
         </div>
       </header>
 
@@ -358,6 +378,11 @@ function ChatScreen({
                     Accept
                   </button>
                 )}
+                {transfer.status === "received" && transfer.downloadUrl && (
+                  <a className="btn-ghost btn-sm" href={transfer.downloadUrl} download={transfer.name}>
+                    Save
+                  </a>
+                )}
                 {!["sent", "received", "failed", "cancelled"].includes(transfer.status) && (
                   <button className="btn-ghost btn-sm" onClick={() => cancelFile(transfer.transferId)}>
                     Cancel
@@ -404,6 +429,8 @@ export default function IronManUI({
   fileTransfers,
   acceptFile,
   cancelFile,
+  user,
+  onSignOut,
 }) {
   const isConnected =
     status === "secure" || status === "handshaking" || status === "verification_required";
@@ -419,6 +446,8 @@ export default function IronManUI({
           connect={connect}
           isSelfConnect={isSelfConnect}
           status={status}
+          user={user}
+          onSignOut={onSignOut}
         />
       ) : (
         <ChatScreen
@@ -438,6 +467,8 @@ export default function IronManUI({
           fileTransfers={fileTransfers}
           acceptFile={acceptFile}
           cancelFile={cancelFile}
+          user={user}
+          onSignOut={onSignOut}
         />
       )}
     </>
