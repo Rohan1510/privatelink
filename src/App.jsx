@@ -31,6 +31,34 @@ export default function App() {
     }
   };
 
+  const isConfigured = Boolean(
+    (import.meta.env.VITE_COGNITO_USER_POOL_ID || "us-east-1_QWtghRdQu") &&
+    (import.meta.env.VITE_COGNITO_CLIENT_ID || "50aulhes4c73gl79v7qs6df4vq")
+  );
+
+  if (!isConfigured) {
+    return (
+      <div className="noise connect-wrapper flex items-center justify-center min-h-screen px-4">
+        <div className="bg-grid-overlay" />
+        <div className="panel scanline connect-panel max-w-lg w-full text-center z-10" style={{ maxWidth: "520px" }}>
+          <h1 className="brand-title" style={{ fontSize: "20px", marginBottom: "8px" }}>DEPLOYMENT SETUP REQUIRED</h1>
+          <p className="brand-subtitle" style={{ marginBottom: "20px" }}>Missing Vercel Environment Variables</p>
+          <div className="error-alert" style={{ marginBottom: "16px", textAlign: "left", fontSize: "12px", lineHeight: "1.6" }}>
+            Vite compiles environment variables at build time. To enable AWS Cognito authentication on Vercel, navigate to <strong>Vercel Dashboard → Project Settings → Environment Variables</strong> and add:
+          </div>
+          <div className="id-display-box" style={{ textAlign: "left", fontSize: "11px", marginBottom: "16px", lineHeight: "1.8" }}>
+            <div><strong>VITE_COGNITO_USER_POOL_ID</strong> = us-east-1_QWtghRdQu</div>
+            <div><strong>VITE_COGNITO_CLIENT_ID</strong> = 50aulhes4c73gl79v7qs6df4vq</div>
+            <div><strong>VITE_COGNITO_REGION</strong> = us-east-1</div>
+          </div>
+          <p className="security-note-text" style={{ fontSize: "11px", color: "var(--muted)", textAlign: "left" }}>
+            💡 After adding the variables in Vercel, go to <strong>Deployments → Click "..." on latest deployment → Redeploy</strong> (uncheck "Use existing build cache") to trigger a clean rebuild.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (checkingAuth) {
     return (
       <div className="noise connect-wrapper flex items-center justify-center min-h-screen">

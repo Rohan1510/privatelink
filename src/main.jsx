@@ -6,12 +6,16 @@ import "./index.css";
 // 1. Import and configure Amplify
 import { Amplify } from "aws-amplify";
 
-// 2. Configure with your Cognito credentials
+const userPoolId =
+  import.meta.env.VITE_COGNITO_USER_POOL_ID || "us-east-1_QWtghRdQu";
+const userPoolClientId =
+  import.meta.env.VITE_COGNITO_CLIENT_ID || "50aulhes4c73gl79v7qs6df4vq";
+
 Amplify.configure({
   Auth: {
     Cognito: {
-      userPoolId: import.meta.env.VITE_COGNITO_USER_POOL_ID,
-      userPoolClientId: import.meta.env.VITE_COGNITO_CLIENT_ID,
+      userPoolId,
+      userPoolClientId,
       loginWith: {
         email: true,
       },
