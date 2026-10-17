@@ -149,7 +149,7 @@ test("Adding Feature - UI simulation: handles invite parsing, self-add guard, an
   const selfInvite = generateInvitePayload(selfUser, VALID_FINGERPRINT_A);
   const parsedSelf = parseInvitePayload(selfInvite.token);
 
-  // Self-add guard check as implemented in IronManUI.jsx
+  // Self-add guard check as implemented in AlfaRomeoUI.jsx
   const isSelf = parsedSelf.id === myDeterministicPeerId;
   assert.equal(isSelf, true, "Should detect that the invite belongs to self");
 

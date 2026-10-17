@@ -11,6 +11,7 @@ import {
   ArrowLeft,
   RefreshCw,
 } from "lucide-react";
+import ThemeToggle from "./ThemeToggle";
 import {
   handleSignIn,
   handleSignUp,
@@ -20,41 +21,28 @@ import {
   handleConfirmResetPassword,
 } from "./auth";
 
-function HexLogo({ size = 80 }) {
+function AlfaEmblem({ size = 72 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 80 80" fill="none">
-      <defs>
-        <linearGradient id="auth-hg" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#00d4ff" />
-          <stop offset="100%" stopColor="#7b5ef8" />
-        </linearGradient>
-        <filter id="auth-glow">
-          <feGaussianBlur stdDeviation="3" result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
+    <svg width={size} height={size} viewBox="0 0 72 72" fill="none">
       <polygon
-        points="40,4 72,22 72,58 40,76 8,58 8,22"
-        fill="rgba(0,212,255,0.04)"
-        stroke="url(#auth-hg)"
+        points="36,4 68,36 36,68 4,36"
+        fill="var(--canvas-deep)"
+        stroke="var(--brand)"
         strokeWidth="1.5"
-        filter="url(#auth-glow)"
+        strokeLinejoin="round"
+        strokeLinecap="round"
       />
       <polygon
-        points="40,14 62,26 62,54 40,66 18,54 18,26"
-        fill="rgba(123,94,248,0.08)"
-        stroke="url(#auth-hg)"
+        points="36,14 58,36 36,58 14,36"
+        fill="var(--canvas-dark)"
+        stroke="var(--hairline)"
         strokeWidth="0.8"
-        opacity="0.5"
+        strokeLinejoin="round"
+        strokeLinecap="round"
       />
-      <path
-        d="M40 26 L28 44 H36 L32 54 L52 36 H44 L48 26 Z"
-        fill="url(#auth-hg)"
-        filter="url(#auth-glow)"
-      />
+      <line x1="36" y1="20" x2="36" y2="52" stroke="var(--brand)" strokeWidth="1.5" strokeLinecap="round" />
+      <line x1="20" y1="36" x2="52" y2="36" stroke="var(--brand)" strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="36" cy="36" r="3" fill="var(--brand)" />
     </svg>
   );
 }
@@ -258,14 +246,19 @@ export default function AuthScreen({ onAuthenticated }) {
   }
 
   return (
-    <div className="noise auth-container-wrapper">
+    <div className="auth-container-wrapper">
       <div className="bg-grid-overlay" />
 
-      <div className="auth-card-panel panel scanline">
+      <div className="auth-card-panel panel">
+        {/* THEME SWITCHER */}
+        <div className="flex justify-end w-full mb-3">
+          <ThemeToggle showLabel />
+        </div>
+
         {/* BRAND HEADER */}
         <div className="brand-header auth-brand-header">
-          <HexLogo size={76} />
-          <h1 className="brand-title">STARK SECURE</h1>
+          <AlfaEmblem size={72} />
+          <h1 className="brand-title">QUADRIFOGLIO SECURE IDENTITY</h1>
           <p className="brand-subtitle">
             AWS Cognito Authentication · End-to-End Encrypted P2P
           </p>
@@ -307,7 +300,7 @@ export default function AuthScreen({ onAuthenticated }) {
 
         {/* 1. SIGN IN FORM */}
         {mode === "signIn" && (
-          <form onSubmit={onSubmitSignIn} className="auth-form">
+          <form key="signIn" onSubmit={onSubmitSignIn} className="auth-form tab-pane-enter">
             <div className="form-field-group">
               <label className="form-label">Email Address</label>
               <div className="input-with-icon">
@@ -361,7 +354,7 @@ export default function AuthScreen({ onAuthenticated }) {
 
             <button
               type="submit"
-              className="btn-primary auth-submit-btn"
+              className="btn-accent auth-submit-btn"
               disabled={loading}
             >
               {loading ? (
@@ -379,7 +372,7 @@ export default function AuthScreen({ onAuthenticated }) {
 
         {/* 2. SIGN UP FORM */}
         {mode === "signUp" && (
-          <form onSubmit={onSubmitSignUp} className="auth-form">
+          <form key="signUp" onSubmit={onSubmitSignUp} className="auth-form tab-pane-enter">
             <div className="form-field-group">
               <label className="form-label">Email Address</label>
               <div className="input-with-icon">
@@ -441,7 +434,7 @@ export default function AuthScreen({ onAuthenticated }) {
 
             <button
               type="submit"
-              className="btn-primary auth-submit-btn"
+              className="btn-accent auth-submit-btn"
               disabled={loading}
             >
               {loading ? (
@@ -459,7 +452,7 @@ export default function AuthScreen({ onAuthenticated }) {
 
         {/* 3. CONFIRM SIGN UP CODE */}
         {mode === "confirmSignUp" && (
-          <form onSubmit={onSubmitConfirmCode} className="auth-form">
+          <form key="confirmSignUp" onSubmit={onSubmitConfirmCode} className="auth-form tab-pane-enter">
             <div className="confirm-instructions">
               <Mail size={32} className="confirm-icon text-accent" />
               <h3 className="confirm-title">Verify Your Email</h3>
@@ -486,7 +479,7 @@ export default function AuthScreen({ onAuthenticated }) {
 
             <button
               type="submit"
-              className="btn-primary auth-submit-btn"
+              className="btn-accent auth-submit-btn"
               disabled={loading || code.length < 6}
             >
               {loading ? (
@@ -522,7 +515,7 @@ export default function AuthScreen({ onAuthenticated }) {
 
         {/* 4. FORGOT PASSWORD */}
         {mode === "forgotPassword" && (
-          <div className="auth-form">
+          <div key="forgotPassword" className="auth-form tab-pane-enter">
             <div className="confirm-instructions">
               <KeyRound size={32} className="confirm-icon text-accent2" />
               <h3 className="confirm-title">Reset Password</h3>
@@ -553,7 +546,7 @@ export default function AuthScreen({ onAuthenticated }) {
 
                 <button
                   type="submit"
-                  className="btn-primary auth-submit-btn"
+                  className="btn-accent auth-submit-btn"
                   disabled={loading}
                 >
                   {loading ? (
@@ -599,7 +592,7 @@ export default function AuthScreen({ onAuthenticated }) {
 
                 <button
                   type="submit"
-                  className="btn-primary auth-submit-btn"
+                  className="btn-accent auth-submit-btn"
                   disabled={loading}
                 >
                   {loading ? (

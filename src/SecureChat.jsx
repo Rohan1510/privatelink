@@ -15,7 +15,7 @@ import {
   decryptFileChunk,
   waitForWritableBuffer,
 } from "./fileTransfer";
-import IronManUI from "./IronManUI";
+import AlfaRomeoUI from "./AlfaRomeoUI";
 import {
   getDeterministicPeerId,
   getFriends,
@@ -911,7 +911,7 @@ export default function SecureChat({ user, onSignOut } = {}) {
 
   /* ===== RENDER UI ===== */
   return (
-    <IronManUI
+    <AlfaRomeoUI
       myId={myId}
       peerId={peerId}
       setPeerId={setPeerId}
