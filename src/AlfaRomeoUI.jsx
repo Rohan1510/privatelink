@@ -12,7 +12,6 @@ import {
   CheckCheck,
   Fingerprint,
   ChevronRight,
-  LogOut,
   Users,
   UserPlus,
   Trash2,
@@ -64,7 +63,6 @@ function ConnectScreen({
   isSelfConnect,
   status,
   user,
-  onSignOut,
   friends = [],
   onAddFriend,
   onRemoveFriend,
@@ -152,12 +150,7 @@ function ConnectScreen({
           </p>
           {user && (
             <div className="badge badge-accent mt-3">
-              <span>{user?.signInDetails?.loginId || user?.username || "Authenticated Operator"}</span>
-              {onSignOut && (
-                <button onClick={onSignOut} className="btn-ghost btn-sm ml-2" title="Sign out of AWS Cognito">
-                  <LogOut size={11} /> EXIT
-                </button>
-              )}
+              <span>{user?.displayName || user?.username || "Local Operator"}</span>
             </div>
           )}
         </div>
@@ -412,8 +405,6 @@ function ChatScreen({
   fileTransfers,
   acceptFile,
   cancelFile,
-  user,
-  onSignOut,
   friends = [],
 }) {
   const endRef = useRef(null);
@@ -475,11 +466,6 @@ function ChatScreen({
           <button className="btn-danger btn-sm" onClick={disconnect}>
             <Power size={12} /> DISCONNECT
           </button>
-          {onSignOut && (
-            <button className="btn-ghost btn-sm" onClick={onSignOut} title="Sign Out of AWS Cognito">
-              <LogOut size={12} /> EXIT
-            </button>
-          )}
         </div>
       </header>
 
@@ -686,7 +672,6 @@ export default function AlfaRomeoUI({
   acceptFile,
   cancelFile,
   user,
-  onSignOut,
   friends = [],
   onAddFriend,
   onRemoveFriend,
@@ -710,7 +695,6 @@ export default function AlfaRomeoUI({
           isSelfConnect={isSelfConnect}
           status={status}
           user={user}
-          onSignOut={onSignOut}
           friends={friends}
           onAddFriend={onAddFriend}
           onRemoveFriend={onRemoveFriend}
@@ -737,8 +721,6 @@ export default function AlfaRomeoUI({
           fileTransfers={fileTransfers}
           acceptFile={acceptFile}
           cancelFile={cancelFile}
-          user={user}
-          onSignOut={onSignOut}
           friends={friends}
           onAddFriend={onAddFriend}
         />

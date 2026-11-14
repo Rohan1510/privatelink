@@ -8,7 +8,7 @@ const MAX_FRIENDS = 100;
 const PEER_ID_REGEX = /^[a-zA-Z0-9_\-:]{1,128}$/;
 
 /**
- * Returns the scoped localStorage key for a specific Cognito user
+ * Returns the scoped localStorage key for a specific local user
  */
 export function getFriendsStorageKey(userId) {
   if (!userId || typeof userId !== "string") {
@@ -20,7 +20,7 @@ export function getFriendsStorageKey(userId) {
 }
 
 /**
- * Derives a deterministic PeerJS ID from a Cognito user ID
+ * Derives a deterministic PeerJS ID from a local user ID
  */
 export function getDeterministicPeerId(userId) {
   if (!userId || typeof userId !== "string") return null;

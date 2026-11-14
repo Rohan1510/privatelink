@@ -100,7 +100,7 @@ function handshakePayload(pkt) {
 /* === MAIN COMPONENT ====================================================== */
 /* ========================================================================= */
 
-export default function SecureChat({ user, onSignOut } = {}) {
+export default function SecureChat({ user } = {}) {
   const [myId, setMyId] = useState("");
   const [peerId, setPeerId] = useState("");
   const [messages, setMessages] = useState([]);
@@ -931,7 +931,6 @@ export default function SecureChat({ user, onSignOut } = {}) {
       acceptFile={acceptFile}
       cancelFile={cancelFile}
       user={user}
-      onSignOut={onSignOut}
       friends={friends}
       onAddFriend={handleAddFriend}
       onRemoveFriend={handleRemoveFriend}
