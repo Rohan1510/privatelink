@@ -112,8 +112,10 @@ export default function SecureChat({ user } = {}) {
   const [friends, setFriends] = useState(() => getFriends(user?.userId));
   const [rawMyFingerprint, setRawMyFingerprint] = useState("");
   const [inboundInvite, setInboundInvite] = useState(null);
+  const [peerNotice, setPeerNotice] = useState("");
 
   const myIdRef = useRef("");
+  const idFallbackRef = useRef(false);
   const peerRef = useRef(null);
   const connRef = useRef(null);
   const identityRef = useRef(null);
@@ -661,6 +663,7 @@ export default function SecureChat({ user } = {}) {
 
   useEffect(() => {
     let peerInst = null;
+    idFallbackRef.current = false;
     (async () => {
       try {
         identityRef.current = await loadOrCreateIdentity();
@@ -670,9 +673,9 @@ export default function SecureChat({ user } = {}) {
         console.error("Identity load error:", err);
       }
 
-      function initPeer(configToUse) {
+      function initPeer(configToUse, idOverride) {
         try {
-          const deterministicId = getDeterministicPeerId(user?.userId);
+          const deterministicId = idOverride || getDeterministicPeerId(user?.userId);
           const peer = deterministicId
             ? (configToUse ? new Peer(deterministicId, configToUse) : new Peer(deterministicId))
             : (configToUse ? new Peer(configToUse) : new Peer());
@@ -685,7 +688,26 @@ export default function SecureChat({ user } = {}) {
           peer.on("error", (err) => {
             console.error("PeerJS network error:", err);
             if (err?.type === "unavailable-id") {
-              console.warn("Deterministic Peer ID already taken in another active session/tab.");
+              // The signaling server rejects a second concurrent holder of the
+              // same ID, which happens whenever this device already has the app
+              // open in another tab (same local identity => same derived ID).
+              // Fall back to a per-tab ID so this tab still gets a usable
+              // endpoint instead of being stuck with no Secure ID at all.
+              if (!myIdRef.current && !idFallbackRef.current) {
+                idFallbackRef.current = true;
+                const base = getDeterministicPeerId(user?.userId) || "pl";
+                const suffix = Math.random().toString(16).slice(2, 8);
+                console.warn("Stable Peer ID already in use; falling back to a per-tab ID.");
+                setPeerNotice(
+                  "This device already has PrivateLink open in another tab, so this tab is using a temporary Secure ID. Share the ID shown below for this session."
+                );
+                try {
+                  peer.destroy();
+                } catch (destroyErr) {
+                  console.warn("Peer cleanup before fallback failed:", destroyErr);
+                }
+                initPeer(configToUse, `${base}-${suffix}`);
+              }
             } else if (!myIdRef.current && configToUse) {
               console.warn("Retrying PeerJS initialization with default options...");
               initPeer(undefined);
@@ -931,6 +953,7 @@ export default function SecureChat({ user } = {}) {
       acceptFile={acceptFile}
       cancelFile={cancelFile}
       user={user}
+      peerNotice={peerNotice}
       friends={friends}
       onAddFriend={handleAddFriend}
       onRemoveFriend={handleRemoveFriend}

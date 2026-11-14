@@ -63,6 +63,7 @@ function ConnectScreen({
   isSelfConnect,
   status,
   user,
+  peerNotice,
   friends = [],
   onAddFriend,
   onRemoveFriend,
@@ -218,6 +219,13 @@ function ConnectScreen({
                   {copiedId ? "Copied" : "Copy"}
                 </button>
               </div>
+
+              {peerNotice && (
+                <div className="error-alert" style={{ marginBottom: "12px", fontSize: "11px", lineHeight: "1.5" }}>
+                  <AlertTriangle size={12} style={{ display: "inline", marginRight: "6px", verticalAlign: "-2px" }} />
+                  {peerNotice}
+                </div>
+              )}
 
               <div className="flex gap-2">
                 <button
@@ -672,6 +680,7 @@ export default function AlfaRomeoUI({
   acceptFile,
   cancelFile,
   user,
+  peerNotice,
   friends = [],
   onAddFriend,
   onRemoveFriend,
@@ -695,6 +704,7 @@ export default function AlfaRomeoUI({
           isSelfConnect={isSelfConnect}
           status={status}
           user={user}
+          peerNotice={peerNotice}
           friends={friends}
           onAddFriend={onAddFriend}
           onRemoveFriend={onRemoveFriend}
